@@ -157,7 +157,7 @@ a.lnk{color:var(--gold-s);font-size:12px;text-align:center;display:block;margin-
 </svg>
 
 <div id="stage">
-  <img id="bgimg" src="img/bg.jpg" alt="Lăng Ba">
+  <img id="bgimg" src="bg.jpg" alt="Lăng Ba">
   <div class="scrim"></div>
   <div class="edge"></div>
 
@@ -283,7 +283,7 @@ GIA_QUYEN.forEach(([k,v])=>{const d=document.createElement('div');
  d.innerHTML='<span class="k"></span>';d.querySelector('.k').textContent=k;
  d.appendChild(document.createTextNode(v));$('#info-bd').appendChild(d);});
 ANH.forEach(([f,c])=>{const s=document.createElement('div');s.className='sl';
- const im=document.createElement('img');im.src='img/'+f+'.jpg';im.alt=c;im.loading='lazy';
+ const im=document.createElement('img');im.src=f+'.jpg';im.alt=c;im.loading='lazy';
  const p=document.createElement('div');p.className='cp';p.textContent=c;
  s.appendChild(im);s.appendChild(p);$('#strip').appendChild(s);});
 
