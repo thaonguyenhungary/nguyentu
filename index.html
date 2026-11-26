@@ -234,7 +234,7 @@ a.lnk{color:var(--gold-s);font-size:12px;text-align:center;display:block;margin-
     <button class="ghost" data-close="book">Đóng</button>
   </div>
   <a class="lnk" id="lnk-form" href="#" target="_blank" rel="noopener" style="display:none">↗ Gửi lời tưởng niệm trên trang gia đình</a>
-  <div class="hint">Bản thử: lời nhắn lưu trên máy này.<br>Bản thật sẽ lưu chung để cả nhà cùng đọc.</div>
+  <div class="hint" id="h-book">Bản thử: lời nhắn lưu trên máy này.<br>Bản thật sẽ lưu chung để cả nhà cùng đọc.</div>
 </div>
 
 <script>
@@ -326,11 +326,23 @@ function tick(dt){
 let last=performance.now();
 (function loop(t){const dt=Math.min(t-last,48);last=t;tick(dt);requestAnimationFrame(loop);})(last);
 
+const API="https://script.google.com/macros/s/AKfycbwO6eeBFBfyALtBf-dbs-hrjOzySsWsmgHr0sJ41cay_YOQx0SaC0nw68Jc8KdKUDSP/exec";   /* dán link /exec của Apps Script vào giữa hai dấu nháy */
+let ONLINE=false,SRV=null,_cb=0;
+function api(q){return new Promise(function(res){
+ if(!API)return res(null);
+ var cb='__c'+(++_cb),s=document.createElement('script'),t=setTimeout(function(){done(null)},12000);
+ function done(d){clearTimeout(t);try{delete window[cb]}catch(e){}if(s.parentNode)s.remove();res(d)}
+ window[cb]=done;s.onerror=function(){done(null)};
+ s.src=API+'?cb='+cb+'&'+Object.keys(q).map(function(k){return k+'='+encodeURIComponent(q[k])}).join('&');
+ document.body.appendChild(s);});}
 const G=k=>+(localStorage.getItem(k)||0);
 let nH=G('h'),nV=G('v'),nL=G('l');
 function dem(){$('#ch').textContent=nH;$('#cv').textContent=nV;$('#cl').textContent=nL;
- try{localStorage.setItem('h',nH);localStorage.setItem('v',nV);localStorage.setItem('l',nL);}catch(e){}}
+ if(!ONLINE){try{localStorage.setItem('h',nH);localStorage.setItem('v',nV);localStorage.setItem('l',nL);}catch(e){}}}
+function nhan(d){if(!d||!d.ok)return;ONLINE=true;SRV=d;nH=d.huong;nV=d.vai;nL=d.levat;dem();ve();}
 dem();
+if(API){api({a:'stats'}).then(nhan);
+ $('#h-book').textContent='Lời nhắn được lưu chung — cả nhà ở đâu cũng đọc được.';}
 
 $('#bh').onclick=()=>{
  const box=$('#sticks'),w=$('.bowl').getBoundingClientRect().width;
@@ -343,13 +355,13 @@ $('#bh').onclick=()=>{
   const dur=150000;
   setTimeout(()=>{s.style.transition='height '+dur+'ms linear, opacity 3s';s.style.height=(h*.12)+'px';},1400);
   setTimeout(()=>{s.style.opacity=0;setTimeout(()=>s.remove(),3000);},dur);}
- nH+=3;dem();chuong(430);};
+ nH+=3;dem();chuong(430);api({a:'huong',n:3}).then(nhan);};
 
 let busy=false;
 $('#bv').onclick=()=>{if(busy)return;busy=true;const st=$('#stage');let i=0;
  const b=()=>{st.style.transition='transform .62s cubic-bezier(.4,0,.3,1)';
   st.style.transform='perspective(900px) rotateX(5deg) scale(1.03) translateY(10px)';
-  setTimeout(()=>{st.style.transform='none';if(++i<3)setTimeout(b,640);else{busy=false;nV++;dem();}},640);};
+  setTimeout(()=>{st.style.transform='none';if(++i<3)setTimeout(b,640);else{busy=false;nV++;dem();api({a:'vai',n:1}).then(nhan);}},640);};
  chuong(330);b();};
 
 $('#bn').onclick=e=>{const on=!$('#nl').classList.contains('on');
@@ -362,7 +374,8 @@ function veGrid(){const g=$('#grid');g.innerHTML='';
  LEVAT[tab].forEach((o,ix)=>{const d=document.createElement('div');d.className='it'+(chon[tab].has(ix)?' on':'');
   d.innerHTML='<div class="ic"></div><div class="nm"></div><div class="ds"></div>';
   d.querySelector('.ic').innerHTML=icon(o.s);d.querySelector('.nm').textContent=o.n;d.querySelector('.ds').textContent=o.d;
-  d.onclick=()=>{chon[tab].has(ix)?chon[tab].delete(ix):chon[tab].add(ix);veGrid();if(tab!=='vm')veMam();};
+  d.onclick=()=>{var them=!chon[tab].has(ix);them?chon[tab].add(ix):chon[tab].delete(ix);
+   veGrid();if(tab!=='vm'){veMam();if(them)api({a:'le',n:1}).then(nhan);}};
   g.appendChild(d);});
  $('#hint').textContent=HINT[tab];
  $('#b-hoa').style.display=tab==='vm'?'':'none';
@@ -373,13 +386,14 @@ function veMam(){const m=$('#mam');m.innerHTML='';let n=0;
   d.innerHTML='<div class="ic"></div><div class="lb"></div>';
   d.querySelector('.ic').innerHTML=icon(o.s);d.querySelector('.lb').textContent=o.n;
   m.appendChild(d);requestAnimationFrame(()=>d.classList.add('on'));}));
- if(n>nL){nL=n;dem();}}
+ if(!ONLINE&&n>nL){nL=n;dem();}}
 function openTab(t){tab=t;$$('.tabs button').forEach(x=>x.classList.toggle('on',x.dataset.tab===t));
  veGrid();$('#sheet').classList.add('open');}
 $$('.tabs button').forEach(b=>b.onclick=()=>openTab(b.dataset.tab));
 $('#bs').onclick=()=>openTab('le');
 $('#bg2').onclick=()=>openTab('vm');
-$('#b-all').onclick=()=>{LEVAT[tab].forEach((_,i)=>chon[tab].add(i));veGrid();if(tab!=='vm')veMam();chuong(470);};
+$('#b-all').onclick=()=>{var k=LEVAT[tab].length-chon[tab].size;LEVAT[tab].forEach((_,i)=>chon[tab].add(i));
+ veGrid();if(tab!=='vm'){veMam();if(k>0)api({a:'le',n:Math.min(k,9)}).then(nhan);}chuong(470);};
 $$('[data-close]').forEach(b=>b.onclick=()=>$('#'+b.dataset.close).classList.remove('open'));
 
 let hoaing=false;
@@ -407,16 +421,18 @@ addEventListener('keydown',e=>{if(!$('#gal').classList.contains('open'))return;
  if(e.key==='ArrowLeft')slide(-1);if(e.key==='ArrowRight')slide(1);});
 
 function doc(){try{return JSON.parse(localStorage.getItem('loi')||'[]')}catch(e){return[]}}
-function ve(){const a=doc(),b=$('#msgs');
+function luuMay(ten,loi){const a=doc();a.push({ten:ten,loi:loi,luc:new Date().toLocaleDateString('vi-VN')});
+ try{localStorage.setItem('loi',JSON.stringify(a))}catch(e){}}
+function ve(){const a=(ONLINE&&SRV?SRV.loi:doc())||[],b=$('#msgs');
  b.innerHTML=a.length?'':'<div class="empty">Chưa có lời nào ở đây.<br>Con cháu ở xa có thể viết đôi dòng thưa với Ba.</div>';
  a.slice().reverse().forEach(m=>{const d=document.createElement('div');d.className='msg';
   d.innerHTML='<span class="who"></span>';d.querySelector('.who').textContent=m.ten+' · '+m.luc;
   d.appendChild(document.createTextNode(m.loi));b.appendChild(d);});}
-$('#bb').onclick=()=>{ve();$('#book').classList.add('open')};
+$('#bb').onclick=()=>{ve();$('#book').classList.add('open');if(API)api({a:'stats'}).then(nhan)};
 $('#b-send').onclick=()=>{const ten=$('#i-ten').value.trim()||'Ẩn danh',loi=$('#i-loi').value.trim();
- if(!loi)return;const a=doc();a.push({ten,loi,luc:new Date().toLocaleDateString('vi-VN')});
- try{localStorage.setItem('loi',JSON.stringify(a))}catch(e){}
- $('#i-loi').value='';ve();chuong(520);};
+ if(!loi)return;$('#i-loi').value='';chuong(520);
+ if(API)api({a:'loi',ten:ten,loi:loi}).then(function(d){if(d&&d.ok)nhan(d);else{luuMay(ten,loi);ve();}});
+ else{luuMay(ten,loi);ve();}};
 
 veGrid();
 </script>
